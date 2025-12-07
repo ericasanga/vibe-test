@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新住民服務指引 | Hướng Dẫn Dịch Vụ Cư Dân Mới</title>
+<style>
+body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+.bilingual { margin: 20px 0; padding: 15px; background: #f5f5f5; border-radius: 5px; }
+.zh { color: #333; font-weight: bold; }
+.vi { color: #666; margin-top: 5px; }
+button { background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+button:hover { background: #45a049; }
+#result { margin-top: 20px; }
+.center { margin: 20px 0; padding: 10px; background: #e3f2fd; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="bilingual">
+<h1 class="zh">新住民服務指引網站</h1>
+<h1 class="vi">Trang Web Hướng Dẫn Dịch Vụ Cư Dân Mới</h1>
+</div>
+
+<div class="bilingual">
+<p class="zh">歡迎來到台灣！我們提供新住民服務中心資訊，協助您融入台灣生活。</p>
+<p class="vi">Chào mừng đến Đài Loan! Chúng tôi cung cấp thông tin trung tâm dịch vụ cư dân mới để giúp bạn hòa nhập cuộc sống Đài Loan.</p>
+</div>
+
+<button onclick="findServiceCenters()">🔍 尋找附近服務中心 | Tìm Trung Tâm Gần Bạn</button>
+
+<div id="result"></div>
+
+<script>
+const serviceCenters = {
+'台北市': [{ name: '台北市新住民會館', address: '台北市中正區重慶南路一段121號', map: 'https://maps.google.com/?q=台北市新住民會館' }],
+'新北市': [{ name: '新北市新住民家庭服務中心', address: '新北市板橋區中山路一段161號', map: 'https://maps.google.com/?q=新北市新住民家庭服務中心' }],
+'桃園市': [{ name: '桃園市新住民文化會館', address: '桃園市桃園區復興路99號', map: 'https://maps.google.com/?q=桃園市新住民文化會館' }],
+'台中市': [{ name: '台中市新住民家庭服務中心', address: '台中市西屯區文心路二段588號', map: 'https://maps.google.com/?q=台中市新住民家庭服務中心' }],
+'台南市': [{ name: '台南市新住民家庭服務中心', address: '台南市安平區中華西路二段315號', map: 'https://maps.google.com/?q=台南市新住民家庭服務中心' }],
+'高雄市': [{ name: '高雄市新住民家庭服務中心', address: '高雄市鳳山區光復路二段132號', map: 'https://maps.google.com/?q=高雄市新住民家庭服務中心' }]
+};
+
+function findServiceCenters() {
+if (!navigator.geolocation) {
+document.getElementById('result').innerHTML = '<div class="bilingual"><p class="zh">您的瀏覽器不支援定位功能</p><p class="vi">Trình duyệt của bạn không hỗ trợ định vị</p></div>';
+return;
+}
+
+document.getElementById('result').innerHTML = '<p>🔍 定位中... | Đang định vị...</p>';
+
+navigator.geolocation.getCurrentPosition(
+position => {
+fetch(`https://nominatim.openstreetmap.org/reverse?lat=${position.coords.latitude}&lon=${position.coords.longitude}&format=json`)
+.then(res => res.json())
+.then(data => {
+const city = data.address.city || data.address.county || data.address.state;
+showCenters(city);
+})
+.catch(() => showAllCenters());
+},
+() => showAllCenters()
+);
+}
+
+function showCenters(city) {
+let html = `<div class="bilingual"><p class="zh">您所在的地區：${city}</p><p class="vi">Khu vực của bạn: ${city}</p></div>`;
+
+const centers = serviceCenters[city];
+if (centers) {
+centers.forEach(c => {
+html += `<div class="center"><strong>${c.name}</strong><br>${c.address}<br><a href="${c.map}" target="_blank">📍 開啟Google地圖 | Mở Google Maps</a></div>`;
+});
+} else {
+html += '<div class="bilingual"><p class="zh">未找到您所在縣市的服務中心，以下是全台服務中心：</p><p class="vi">Không tìm thấy trung tâm tại thành phố của bạn, dưới đây là tất cả trung tâm:</p></div>';
+showAllCenters();
+return;
+}
+
+document.getElementById('result').innerHTML = html;
+}
+
+function showAllCenters() {
+let html = '<div class="bilingual"><p class="zh">全台新住民服務中心</p><p class="vi">Tất Cả Trung Tâm Dịch Vụ Cư Dân Mới</p></div>';
+for (let city in serviceCenters) {
+serviceCenters[city].forEach(c => {
+html += `<div class="center"><strong>${c.name}</strong><br>${c.address}<br><a href="${c.map}" target="_blank">📍 開啟Google地圖 | Mở Google Maps</a></div>`;
+});
+}
+document.getElementById('result').innerHTML = html;
+}
+</script>
+</body>
+</html>
