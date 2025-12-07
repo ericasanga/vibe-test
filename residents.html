@@ -27,6 +27,7 @@ button:hover { background: #45a049; }
 </div>
 
 <button onclick="findServiceCenters()">🔍 尋找附近服務中心 | Tìm Trung Tâm Gần Bạn</button>
+<button onclick="showAllCenters()">📋 全部列出 | Liệt Kê Tất Cả</button>
 
 <div id="result"></div>
 
@@ -37,6 +38,10 @@ const serviceCenters = {
 '桃園市': [{ name: '桃園市新住民文化會館', address: '桃園市桃園區復興路99號', map: 'https://maps.google.com/?q=桃園市新住民文化會館' }],
 '台中市': [{ name: '台中市新住民家庭服務中心', address: '台中市西屯區文心路二段588號', map: 'https://maps.google.com/?q=台中市新住民家庭服務中心' }],
 '彰化縣': [{ name: '彰化縣新住民家庭服務中心', address: '500彰化縣彰化市南郭路一段60號4樓', map: 'https://maps.google.com/?q=彰化縣彰化市南郭路一段60號4樓' }],
+'南投縣': [
+{ name: '南投縣政府新住民家庭服務中心', address: '540南投縣南投市南崗二路85號三樓', map: 'https://maps.google.com/?q=南投縣南投市南崗二路85號三樓' },
+{ name: '南投國姓真巖寺-新住民同心關懷協會', address: '544南投縣國姓鄉國姓路487-1號', map: 'https://maps.google.com/?q=南投縣國姓鄉國姓路487-1號', website: 'https://zhenyansi.com.tw/care/' }
+],
 '台南市': [{ name: '台南市新住民家庭服務中心', address: '台南市安平區中華西路二段315號', map: 'https://maps.google.com/?q=台南市新住民家庭服務中心' }],
 '高雄市': [{ name: '高雄市新住民家庭服務中心', address: '高雄市鳳山區光復路二段132號', map: 'https://maps.google.com/?q=高雄市新住民家庭服務中心' }]
 };
@@ -69,7 +74,7 @@ let html = `<div class="bilingual"><p class="zh">您所在的地區：${city}</p
 const centers = serviceCenters[city];
 if (centers) {
 centers.forEach(c => {
-html += `<div class="center"><strong>${c.name}</strong><br>${c.address}<br><a href="${c.map}" target="_blank">📍 開啟Google地圖 | Mở Google Maps</a></div>`;
+html += `<div class="center"><strong>${c.name}</strong><br>${c.address}<br><a href="${c.map}" target="_blank">📍 開啟Google地圖 | Mở Google Maps</a>${c.website ? `<br><a href="${c.website}" target="_blank">🌐 官網 | Website</a>` : ''}</div>`;
 });
 } else {
 html += '<div class="bilingual"><p class="zh">未找到您所在縣市的服務中心，以下是全台服務中心：</p><p class="vi">Không tìm thấy trung tâm tại thành phố của bạn, dưới đây là tất cả trung tâm:</p></div>';
@@ -81,12 +86,15 @@ document.getElementById('result').innerHTML = html;
 }
 
 function showAllCenters() {
+const order = ['台北市', '新北市', '桃園市', '台中市', '彰化縣', '南投縣', '台南市', '高雄市'];
 let html = '<div class="bilingual"><p class="zh">全台新住民服務中心</p><p class="vi">Tất Cả Trung Tâm Dịch Vụ Cư Dân Mới</p></div>';
-for (let city in serviceCenters) {
+order.forEach(city => {
+if (serviceCenters[city]) {
 serviceCenters[city].forEach(c => {
-html += `<div class="center"><strong>${c.name}</strong><br>${c.address}<br><a href="${c.map}" target="_blank">📍 開啟Google地圖 | Mở Google Maps</a></div>`;
+html += `<div class="center"><strong>${c.name}</strong><br>${c.address}<br><a href="${c.map}" target="_blank">📍 開啟Google地圖 | Mở Google Maps</a>${c.website ? `<br><a href="${c.website}" target="_blank">🌐 官網 | Website</a>` : ''}</div>`;
 });
 }
+});
 document.getElementById('result').innerHTML = html;
 }
 </script>
