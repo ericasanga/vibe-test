@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VT ETF 投資分析儀表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 800px;
+            margin-bottom: 30px;
+        }
+        h1 { text-align: center; color: #333; margin-bottom: 10px; }
+        h2 { text-align: center; color: #555; font-size: 1.2rem; margin-bottom: 20px; }
+        .btn-container { text-align: center; margin-top: 20px; }
+        button {
+            padding: 10px 20px; background-color: #007bff; color: white;
+            border: none; border-radius: 5px; cursor: pointer; font-size: 1rem;
+        }
+        button:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>資產成長曲線</h1>
+        <h2>假設 2009 年初投入 100 美金，現在會變成多少？</h2>
+        <canvas id="growthChart"></canvas>
+    </div>
+
+    <div class="container">
+        <h1>年度漲跌幅</h1>
+        <h2>VT 歷年報酬率 (Yearly Returns %)</h2>
+        <canvas id="barChart"></canvas>
+        
+        <div class="btn-container">
+            <button onclick="window.location.href='index.html'">回首頁</button>
+        </div>
+    </div>
+
+    <script>
+        Chart.register(ChartDataLabels);
+
+        // ============================================
+        // 【請將 Python 跑出來的三行資料貼在下方】
+        // ============================================
+        
+        const yearsLabels = ['2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025'];
+        const returnsData = [32.66, 13.08, -7.51, 17.12, 22.94, 3.68, -1.86, 8.5, 24.5, -9.76, 26.81, 16.59, 18.27, -18.0, 22.02, 16.49, 21.94];
+        const assetData = [132.66, 150.01, 138.74, 162.5, 199.77, 207.13, 202.82, 220.06, 273.97, 247.24, 313.52, 365.55, 432.32, 354.51, 432.61, 503.95, 614.51];
+
+        // ============================================
+        // 圖表 1 設定：折線圖 (資產成長)
+        // ============================================
+        const ctxGrowth = document.getElementById('growthChart');
+        new Chart(ctxGrowth, {
+            type: 'line',
+            data: {
+                labels: yearsLabels,
+                datasets: [{
+                    label: '資產價值 (美金)',
+                    data: assetData,
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderWidth: 3,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) { return '資產價值: $' + context.parsed.y; }
+                        }
+                    },
+                    // 【數據標籤設定】
+                    datalabels: {
+                        align: 'top',
+                        anchor: 'end',
+                        // =================================================
+                        // 【關鍵修改】這裡不再是固定顏色，而是用函數判斷
+                        // =================================================
+                        color: function(context) {
+                            const index = context.dataIndex;
+                            const data = context.dataset.data;
+                            const currentValue = data[index];
+
+                            // 第一年預設藍色
+                            if (index === 0) return 'rgb(54, 162, 235)';
+
+                            const previousValue = data[index - 1];
+
+                            // 如果今年比去年少，回傳紅色，否則藍色
+                            return currentValue < previousValue ? 'rgb(255, 99, 132)' : 'rgb(54, 162, 235)';
+                        },
+                        // =================================================
+                        font: {
+                            weight: 'bold',
+                            size: 11
+                        },
+                        formatter: function(value) {
+                            return '$' + Math.round(value);
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: '金額 (USD)' },
+                        suggestedMax: Math.max(...assetData) * 1.1 
+                    }
+                }
+            }
+        });
+
+        // ============================================
+        // 圖表 2 設定：柱狀圖 (年報酬率)
+        // ============================================
+        const ctxBar = document.getElementById('barChart');
+        const barColors = returnsData.map(v => v >= 0 ? 'rgba(75, 192, 192, 0.7)' : 'rgba(255, 99, 132, 0.7)');
+        
+        new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: yearsLabels,
+                datasets: [{
+                    label: '年報酬率 (%)',
+                    data: returnsData,
+                    backgroundColor: barColors,
+                    borderWidth: 0,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: { display: false }, // 柱狀圖不顯示標籤
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) { return context.parsed.y + '%'; }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        title: { display: true, text: '報酬率 (%)' },
+                        grid: { color: '#f0f0f0' }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
