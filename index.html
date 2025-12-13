@@ -19,7 +19,9 @@
             display: flex;
             justify-content: center;
             gap: 20px;
-            flex-wrap: wrap;
+            flex-wrap: wrap; /* 讓卡片太擠時自動換行 */
+            max-width: 1200px;
+            margin: 0 auto;
         }
         .card {
             background: white;
@@ -45,14 +47,17 @@
             font-size: 1.2rem;
             display: flex;
             align-items: center;
+            justify-content: center;
         }
         .card h2 span {
             margin-right: 8px;
+            font-size: 1.4rem;
         }
         .card p {
             color: #666;
             font-size: 0.9rem;
             margin: 0;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -68,17 +73,22 @@
 
         <a href="vt_chart.html" class="card">
             <h2><span>🌍</span>VT 全球</h2>
-            <p>Vanguard 全世界股票 ETF<br>歷史回測</p>
+            <p>Vanguard 全世界股票<br>歷史回測</p>
         </a>
 
         <a href="vti_chart.html" class="card">
-            <h2><span>🇺🇸</span>us VTI 美國</h2>
-            <p>Vanguard 美國整體市場 ETF<br>歷史回測</p>
+            <h2><span>🇺🇸</span>VTI 美國</h2>
+            <p>Vanguard 美國整體市場<br>歷史回測</p>
         </a>
 
         <a href="vgit_chart.html" class="card">
             <h2><span>🛡️</span>VGIT 公債</h2>
-            <p>Vanguard 美國中期公債 ETF<br>資產避險</p>
+            <p>Vanguard 美國中期公債<br>資產避險</p>
+        </a>
+
+        <a href="0050_chart.html" class="card">
+            <h2><span>🇹🇼</span>0050 台灣</h2>
+            <p>元大台灣 50 ETF<br>權值股成長</p>
         </a>
     </div>
 

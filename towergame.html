@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>Age of Vibe: Zombie Defense</title>
+    <style>
+        body { margin: 0; background: #0d0d15; color: #aaddff; font-family: 'Segoe UI', sans-serif; overflow: hidden; user-select: none; }
+        
+        /* 科幻軍事 UI */
+        #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        
+        .hud-top { 
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 20px;
+            background: rgba(10, 20, 30, 0.9);
+            border: 1px solid #00d2ff;
+            border-top: 3px solid #00d2ff;
+            padding: 10px 30px;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.2);
+            pointer-events: auto;
+        }
+
+        .stat-box { text-align: center; min-width: 80px; }
+        .stat-label { font-size: 12px; color: #5588aa; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-value { font-size: 24px; font-weight: bold; font-family: 'Consolas', monospace; color: #fff; text-shadow: 0 0 10px #00d2ff; }
+
+        .control-panel {
+            position: absolute; bottom: 20px; right: 20px;
+            display: flex; flex-direction: column; gap: 10px;
+            pointer-events: auto;
+        }
+
+        .tower-btn {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #444;
+            border-left: 4px solid #444;
+            color: #aaa;
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 220px;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tower-btn:hover { background: rgba(0, 50, 80, 0.8); color: #fff; border-left-color: #00d2ff; }
+        .tower-btn.selected { background: rgba(0, 40, 60, 0.9); border-color: #00d2ff; border-left: 4px solid #00d2ff; color: #fff; box-shadow: 0 0 15px rgba(0, 210, 255, 0.3); }
+
+        .tower-icon { width: 30px; height: 30px; background: #333; margin-right: 15px; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+        .tower-info h3 { margin: 0; font-size: 16px; }
+        .tower-info p { margin: 2px 0 0; font-size: 12px; color: #888; }
+        .cost { font-weight: bold; color: #ffd700; }
+
+        #tooltip {
+            position: absolute; display: none; background: rgba(0,0,0,0.9); border: 1px solid #ff4444; 
+            padding: 8px 12px; border-radius: 4px; font-size: 14px; pointer-events: none; color: #ffcccc;
+            z-index: 100; box-shadow: 0 0 10px rgba(255,0,0,0.3);
+        }
+
+        .start-btn {
+            position: absolute; bottom: 20px; left: 20px;
+            padding: 15px 40px;
+            background: linear-gradient(45deg, #cc0000, #990000);
+            border: none; color: white; font-weight: bold; font-size: 18px;
+            letter-spacing: 2px; cursor: pointer;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
+            pointer-events: auto;
+            clip-path: polygon(10% 0, 100% 0, 100% 80%, 90% 100%, 0 100%, 0 20%);
+        }
+        .start-btn:hover { transform: scale(1.05); filter: brightness(1.2); }
+    </style>
+</head>
+<body>
+
+<audio id="bgm" loop>
+    <source src="https://cdn.pixabay.com/audio/2022/03/09/audio_c8c8a73467.mp3" type="audio/mpeg">
+</audio>
+<audio id="sfx-shoot-mg" src="https://cdn.pixabay.com/audio/2022/03/15/audio_73663a77a9.mp3"></audio>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="game-ui">
+    <div class="hud-top">
+        <div class="stat-box">
+            <div class="stat-label">Lives</div>
+            <div class="stat-value" id="lives" style="color:#ff4444">15</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Credits</div>
+            <div class="stat-value" id="money" style="color:#ffd700">250</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Wave</div>
+            <div class="stat-value" id="wave">1</div>
+        </div>
+    </div>
+
+    <button class="start-btn" onclick="toggleMusic(); nextWave();" id="wave-btn">START BATTLE</button>
+
+    <div class="control-panel">
+        <div class="tower-btn" onclick="selectTower('machinegun')" id="btn-mg">
+            <div style="display:flex; align-items:center;">
+                <div class="tower-icon" style="color:#e6c200">🔫</div>
+                <div class="tower-info">
+                    <h3>Gatling Turret</h3>
+                    <p>Rapid fire, Low DMG</p>
+                </div>
+            </div>
+            <div class="cost">$80</div>
+        </div>
+        <div class="tower-btn" onclick="selectTower('laser')" id="btn-laser">
+             <div style="display:flex; align-items:center;">
+                <div class="tower-icon" style="color:#ff4444">⚡</div>
+                <div class="tower-info">
+                    <h3>Prism Tower</h3>
+                    <p>High DMG, Slow</p>
+                </div>
+            </div>
+            <div class="cost">$150</div>
+        </div>
+        <div style="text-align:right; font-size:12px; color:#666; margin-top:5px;">Right Click on Tower to Upgrade</div>
+    </div>
+</div>
+<div id="tooltip"></div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // --- 遊戲狀態 ---
+    let gameState = {
+        lives: 15,
+        money: 250,
+        wave: 0,
+        enemies: [],
+        towers: [],
+        projectiles: [],
+        particles: [],
+        decals: [], // 地面血跡
+        selectedTower: null,
+        waveInProgress: false,
+        bgmStarted: false
+    };
+
+    // --- 資源配置 (仿 Age of Z) ---
+    const waveConfig = [
+        { name: "Infected Walker", count: 35, hp: 60, speed: 1.4, color: '#6b8c42', size: 8, reward: 8, interval: 600 },
+        { name: "Runner", count: 60, hp: 45, speed: 3.0, color: '#8f9c56', size: 7, reward: 10, interval: 400 },
+        { name: "Armored Zombie", count: 40, hp: 220, speed: 1.2, color: '#4a5d38', size: 10, reward: 20, interval: 800 },
+        { name: "Mutant Dog", count: 80, hp: 120, speed: 3.5, color: '#662222', size: 6, reward: 12, interval: 300 },
+        { name: "The Tank", count: 8, hp: 3000, speed: 0.8, color: '#331111', size: 20, reward: 400, interval: 2500 }
+    ];
+
+    const towerTypes = {
+        machinegun: {
+            name: 'Gatling', baseCost: 80, color: '#cca',
+            levels: [
+                { range: 180, damage: 6, cooldown: 6, color: '#888' },
+                { range: 200, damage: 12, cooldown: 5, color: '#aaa' },
+                { range: 220, damage: 25, cooldown: 4, color: '#fff' }
+            ]
+        },
+        laser: {
+            name: 'Prism', baseCost: 150, color: '#f44',
+            levels: [
+                { range: 140, damage: 80, cooldown: 50, color: '#00ccff' },
+                { range: 160, damage: 200, cooldown: 45, color: '#00ffff' },
+                { range: 180, damage: 500, cooldown: 40, color: '#ffffff' }
+            ]
+        }
+    };
+
+    // --- 系統設定 ---
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // S型路徑
+    function getPath() {
+        const w = canvas.width, h = canvas.height;
+        return [
+            {x:0, y:h*0.3}, {x:w*0.2, y:h*0.3}, {x:w*0.2, y:h*0.7}, 
+            {x:w*0.5, y:h*0.7}, {x:w*0.5, y:h*0.2}, {x:w*0.8, y:h*0.2}, 
+            {x:w*0.8, y:h*0.8}, {x:w, y:h*0.8}
+        ];
+    }
+
+    // --- 類別定義 ---
+
+    class Enemy {
+        constructor(cfg) {
+            this.cfg = cfg;
+            this.hp = cfg.hp;
+            this.maxHp = cfg.hp;
+            this.speed = cfg.speed;
+            this.pathIndex = 0;
+            this.x = getPath()[0].x;
+            this.y = getPath()[0].y;
+            this.offset = (Math.random()-0.5) * 15; // 散開一點
+            this.wobblePhase = Math.random() * Math.PI * 2;
+        }
+
+        move() {
+            const path = getPath();
+            const target = path[this.pathIndex + 1];
+            if(!target) return;
+
+            const tx = target.x;
+            const ty = target.y + this.offset;
+            const angle = Math.atan2(ty - this.y, tx - this.x);
+            
+            // 搖晃動畫 (模擬走路)
+            this.wobblePhase += 0.2;
+            const wobble = Math.sin(this.wobblePhase) * 1.5;
+
+            const dx = tx - this.x;
+            const dy = ty - this.y;
+            const dist = Math.hypot(dx, dy);
+
+            if(dist < this.speed) {
+                this.x = tx; this.y = ty;
+                this.pathIndex++;
+                if(this.pathIndex >= path.length-1) {
+                    gameState.lives--;
+                    this.hp = 0;
+                    document.getElementById('lives').innerText = gameState.lives;
+                }
+            } else {
+                this.x += Math.cos(angle) * this.speed + (Math.cos(angle+Math.PI/2)*wobble*0.1);
+                this.y += Math.sin(angle) * this.speed + (Math.sin(angle+Math.PI/2)*wobble*0.1);
+            }
+        }
+
+        draw() {
+            // 陰影
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.beginPath(); ctx.ellipse(this.x, this.y+5, this.cfg.size, this.cfg.size*0.6, 0, 0, Math.PI*2); ctx.fill();
+
+            // 身體
+            ctx.fillStyle = this.cfg.color;
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.cfg.size, 0, Math.PI*2); ctx.fill();
+            
+            // 頭部/細節
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath(); ctx.arc(this.x+2, this.y-2, this.cfg.size*0.4, 0, Math.PI*2); ctx.fill();
+
+            // 血條
+            if(this.hp < this.maxHp) {
+                const pct = this.hp / this.maxHp;
+                ctx.fillStyle = '#300'; ctx.fillRect(this.x-10, this.y-15, 20, 3);
+                ctx.fillStyle = '#0f0'; ctx.fillRect(this.x-10, this.y-15, 20*pct, 3);
+            }
+        }
+    }
+
+    class Tower {
+        constructor(x, y, type) {
+            this.x = x; y = y; this.y = y;
+            this.type = type;
+            this.level = 0;
+            this.angle = 0;
+            this.cooldown = 0;
+            this.recoil = 0; // 後座力動畫
+            this.flash = 0;  // 槍口火光
+        }
+
+        get stats() { return towerTypes[this.type].levels[this.level]; }
+
+        upgrade() {
+            if(this.level < 2 && gameState.money >= 100*(this.level+1)) {
+                gameState.money -= 100*(this.level+1);
+                this.level++;
+                createParticles(this.x, this.y, '#00d2ff', 20, 3);
+                updateUI();
+                return true;
+            }
+            return false;
+        }
+
+        update() {
+            if(this.cooldown > 0) this.cooldown--;
+            if(this.recoil > 0) this.recoil *= 0.8;
+            if(this.flash > 0) this.flash--;
+
+            // 索敵
+            let target = null;
+            let minD = Infinity;
+            for(let e of gameState.enemies) {
+                let d = Math.hypot(e.x - this.x, e.y - this.y);
+                if(d < this.stats.range && d < minD) { minD = d; target = e; }
+            }
+
+            if(target) {
+                // 平滑轉向
+                let targetAngle = Math.atan2(target.y - this.y, target.x - this.x);
+                let diff = targetAngle - this.angle;
+                // 角度標準化
+                while(diff < -Math.PI) diff += Math.PI*2;
+                while(diff > Math.PI) diff -= Math.PI*2;
+                this.angle += diff * 0.2;
+
+                if(this.cooldown <= 0 && Math.abs(diff) < 0.5) {
+                    this.shoot(target);
+                    this.cooldown = this.stats.cooldown;
+                }
+            }
+        }
+
+        shoot(target) {
+            this.recoil = 5;
+            this.flash = 3;
+            
+            if(this.type === 'machinegun') {
+                // 彈道
+                gameState.projectiles.push({
+                    type: 'bullet', x: this.x + Math.cos(this.angle)*20, y: this.y + Math.sin(this.angle)*20,
+                    vx: Math.cos(this.angle)*15, vy: Math.sin(this.angle)*15,
+                    damage: this.stats.damage
+                });
+                // 彈殼特效
+                createParticles(this.x, this.y, '#ffd700', 1, 2, Math.PI/2 + this.angle);
+            } else {
+                // 雷射
+                target.hp -= this.stats.damage;
+                createParticles(target.x, target.y, '#00ffff', 5, 2);
+                gameState.projectiles.push({
+                    type: 'laser', x1: this.x, y1: this.y, x2: target.x, y2: target.y, 
+                    color: this.stats.color, life: 4
+                });
+            }
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            
+            // 底座
+            ctx.fillStyle = '#222';
+            ctx.beginPath(); ctx.arc(0,0,14,0,Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#444'; ctx.lineWidth = 2; ctx.stroke();
+            
+            // 等級標示
+            if(this.level > 0) {
+                ctx.strokeStyle = this.type === 'machinegun' ? '#ffd700' : '#00d2ff';
+                ctx.beginPath(); ctx.arc(0,0,16 + this.level*2, 0, Math.PI*2); ctx.stroke();
+            }
+
+            ctx.rotate(this.angle);
+            
+            // 砲塔繪製 (根據類型)
+            const kick = this.recoil;
+            if(this.type === 'machinegun') {
+                // 雙管機槍
+                ctx.fillStyle = '#555';
+                ctx.fillRect(-8, -10, 16, 20); // 本體
+                ctx.fillStyle = '#111';
+                ctx.fillRect(8 - kick, -6, 18, 4); // 槍管1
+                ctx.fillRect(8 - kick, 2, 18, 4);  // 槍管2
+                // 火光
+                if(this.flash > 0) {
+                    ctx.fillStyle = `rgba(255, 200, 50, ${this.flash/3})`;
+                    ctx.beginPath(); ctx.arc(28, 0, 8 + Math.random()*5, 0, Math.PI*2); ctx.fill();
+                }
+            } else {
+                // 雷射塔
+                ctx.fillStyle = '#444';
+                ctx.beginPath(); ctx.moveTo(10-kick, 0); ctx.lineTo(-10, 10); ctx.lineTo(-10, -10); ctx.fill();
+                ctx.fillStyle = this.stats.color;
+                ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI*2); ctx.fill(); // 核心
+            }
+            ctx.restore();
+        }
+    }
+
+    // --- 特效管理 ---
+    function createParticles(x, y, color, count, speed=1, dir=null) {
+        for(let i=0; i<count; i++) {
+            let angle = dir !== null ? dir + (Math.random()-0.5) : Math.random() * Math.PI * 2;
+            gameState.particles.push({
+                x, y, 
+                vx: Math.cos(angle) * Math.random() * speed * 2,
+                vy: Math.sin(angle) * Math.random() * speed * 2,
+                life: 20 + Math.random()*20,
+                color
+            });
+        }
+    }
+
+    function addDecal(x, y) {
+        if(gameState.decals.length > 50) gameState.decals.shift(); // 限制數量
+        gameState.decals.push({x, y, size: 5+Math.random()*10, alpha: 0.8});
+    }
+
+    // --- 主循環 ---
+    function update() {
+        // 背景繪製
+        ctx.fillStyle = '#111'; ctx.fillRect(0,0,canvas.width, canvas.height);
+        
+        // 繪製道路 (柏油路質感)
+        const path = getPath();
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        
+        // 路邊緣
+        ctx.lineWidth = 90; ctx.strokeStyle = '#2a2a2a'; 
+        ctx.beginPath(); ctx.moveTo(path[0].x, path[0].y);
+        for(let i=1; i<path.length;i++) ctx.lineTo(path[i].x, path[i].y); ctx.stroke();
+        
+        // 路面
+        ctx.lineWidth = 80; ctx.strokeStyle = '#333'; 
+        ctx.stroke();
+
+        // 路面裝飾 (中線)
+        ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.setLineDash([20, 20]);
+        ctx.stroke(); ctx.setLineDash([]);
+
+        // 繪製血跡
+        for(let d of gameState.decals) {
+            ctx.fillStyle = `rgba(50, 100, 50, ${d.alpha})`;
+            ctx.beginPath(); ctx.arc(d.x, d.y, d.size, 0, Math.PI*2); ctx.fill();
+            d.alpha -= 0.001;
+        }
+
+        // 處理敵人
+        for(let i=gameState.enemies.length-1; i>=0; i--) {
+            let e = gameState.enemies[i];
+            e.move();
+            e.draw();
+            if(e.hp <= 0) {
+                gameState.money += e.cfg.reward;
+                addDecal(e.x, e.y); // 留下血跡
+                createParticles(e.x, e.y, '#4f4', 8, 2); // 爆血
+                gameState.enemies.splice(i, 1);
+                updateUI();
+            }
+        }
+
+        // 處理塔
+        gameState.towers.forEach(t => { t.update(); t.draw(); });
+
+        // 處理投射物
+        for(let i=gameState.projectiles.length-1; i>=0; i--) {
+            let p = gameState.projectiles[i];
+            if(p.type === 'laser') {
+                ctx.strokeStyle = p.color; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(p.x1, p.y1); ctx.lineTo(p.x2, p.y2); ctx.stroke();
+                p.life--;
+                if(p.life<=0) gameState.projectiles.splice(i, 1);
+            } else {
+                p.x += p.vx; p.y += p.vy;
+                ctx.fillStyle = '#ffeda0';
+                ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.fill();
+                
+                // 碰撞判定 (簡單)
+                for(let e of gameState.enemies) {
+                    if(Math.hypot(e.x - p.x, e.y - p.y) < e.cfg.size + 5) {
+                        e.hp -= p.damage;
+                        createParticles(p.x, p.y, '#8f8', 2, 1);
+                        gameState.projectiles.splice(i, 1);
+                        break;
+                    }
+                }
+                // 出界移除
+                if(p.x<0||p.x>canvas.width||p.y<0||p.y>canvas.height) gameState.projectiles.splice(i,1);
+            }
+        }
+
+        // 粒子
+        for(let i=gameState.particles.length-1; i>=0; i--) {
+            let pt = gameState.particles[i];
+            pt.x += pt.vx; pt.y += pt.vy;
+            pt.life--;
+            ctx.fillStyle = pt.color;
+            ctx.globalAlpha = pt.life/30;
+            ctx.fillRect(pt.x, pt.y, 2, 2);
+            ctx.globalAlpha = 1;
+            if(pt.life<=0) gameState.particles.splice(i, 1);
+        }
+
+        if(gameState.lives <= 0) {
+            ctx.fillStyle = 'rgba(20,0,0,0.8)'; ctx.fillRect(0,0,canvas.width, canvas.height);
+            ctx.fillStyle = 'red'; ctx.font = '50px Impact'; ctx.textAlign='center';
+            ctx.fillText("BASE DESTROYED", canvas.width/2, canvas.height/2);
+            return;
+        }
+
+        requestAnimationFrame(update);
+    }
+
+    // --- 控制與邏輯 ---
+    function selectTower(t) {
+        gameState.selectedTower = t;
+        document.querySelectorAll('.tower-btn').forEach(b => b.classList.remove('selected'));
+        if(t==='machinegun') document.getElementById('btn-mg').classList.add('selected');
+        if(t==='laser') document.getElementById('btn-laser').classList.add('selected');
+    }
+
+    canvas.addEventListener('mousedown', e => {
+        if(e.button === 2) return; // 右鍵由 contextmenu 處理
+        if(!gameState.selectedTower) return;
+        const type = gameState.selectedTower;
+        const cost = towerTypes[type].baseCost;
+        if(gameState.money >= cost) {
+            // 簡單檢查重疊
+            if(gameState.towers.some(t => Math.hypot(t.x-e.clientX, t.y-e.clientY) < 30)) return;
+            
+            gameState.towers.push(new Tower(e.clientX, e.clientY, type));
+            gameState.money -= cost;
+            updateUI();
+        } else {
+            showTooltip(e.clientX, e.clientY, "INSUFFICIENT FUNDS");
+        }
+    });
+
+    canvas.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        for(let t of gameState.towers) {
+            if(Math.hypot(t.x - e.clientX, t.y - e.clientY) < 20) {
+                if(!t.upgrade()) showTooltip(e.clientX, e.clientY, "NEED CREDITS / MAX LEVEL");
+                break;
+            }
+        }
+    });
+
+    function nextWave() {
+        if(gameState.waveInProgress || gameState.wave >= 5) return;
+        gameState.waveInProgress = true;
+        
+        let cfg = waveConfig[gameState.wave];
+        gameState.wave++;
+        document.getElementById('wave-btn').innerText = `WAVE ${gameState.wave} INCOMING...`;
+        document.getElementById('wave-btn').style.background = '#444';
+        updateUI();
+
+        let spawned = 0;
+        let intv = setInterval(() => {
+            if(gameState.lives <= 0) { clearInterval(intv); return; }
+            gameState.enemies.push(new Enemy(cfg));
+            spawned++;
+            if(spawned >= cfg.count) {
+                clearInterval(intv);
+                // 檢查波次結束
+                let check = setInterval(() => {
+                    if(gameState.enemies.length === 0) {
+                        clearInterval(check);
+                        gameState.waveInProgress = false;
+                        document.getElementById('wave-btn').innerText = "START NEXT WAVE";
+                        document.getElementById('wave-btn').style.background = "linear-gradient(45deg, #cc0000, #990000)";
+                        if(gameState.wave === 5) alert("VICTORY! The base is safe.");
+                    }
+                }, 1000);
+            }
+        }, cfg.interval);
+    }
+
+    function toggleMusic() {
+        if(!gameState.bgmStarted) {
+            document.getElementById('bgm').volume = 0.2;
+            document.getElementById('bgm').play();
+            gameState.bgmStarted = true;
+        }
+    }
+
+    function showTooltip(x, y, txt) {
+        const tt = document.getElementById('tooltip');
+        tt.style.left = x+15+'px'; tt.style.top = y-30+'px';
+        tt.innerText = txt; tt.style.display='block';
+        setTimeout(()=>tt.style.display='none', 1000);
+    }
+
+    function updateUI() {
+        document.getElementById('lives').innerText = gameState.lives;
+        document.getElementById('money').innerText = gameState.money;
+        document.getElementById('wave').innerText = gameState.wave;
+    }
+
+    update();
+</script>
+</body>
+</html>
